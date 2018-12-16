@@ -1,0 +1,101 @@
+---
+title: "NTSA-Toolbox"
+author: "Adriano O Andrade"
+date: "15 de dezembro de 2018"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## R Markdown
+
+
+```{r, message=FALSE, warning=FALSE}
+
+# Load TREMSEN-Toolbox
+source("https://raw.githubusercontent.com/NIATS-UFU/TREMSEN-Toolbox/master/TREMSENToolbox.R")
+
+# Sample data available online
+filename <- "https://raw.githubusercontent.com/NIATS-UFU/NTSA-Toolbox/master/Data/V09C1RSC.txt"
+
+# Load data
+df <- LoadTREMSENFile(filename)
+
+# Detrend data
+df.detrended <- nonLineardetrendTremsenData(df)
+
+# Plot data
+plotMultiPanelData(df.detrended)
+
+
+```
+
+
+
+```{r, message=FALSE, warning=FALSE}
+
+##### Concept 1: Phase Portrait
+
+library(ggplot2)
+
+library (seewave)
+
+# https://cran.r-project.org/web/packages/nonlinearTseries/nonlinearTseries.pdf
+# Package for nonlinear time series analysis
+if (!require(nonlinearTseries)) install.packages('nonlinearTseries') 
+
+# Function for shifting a time series by lag
+# Avaliable @ http://clarkrichards.org/r/timeseries/2016/02/09/a-function-to-shift-vectors/
+shift <- function(x, lag) {
+    n <- length(x)
+    xnew <- rep(NA, n)
+    if (lag < 0) {
+        xnew[1:(n-abs(lag))] <- x[(abs(lag)+1):n]
+    } else if (lag > 0) {
+        xnew[(lag+1):n] <- x[1:(n-lag)]
+    } else {
+        xnew <- x
+    }
+    return(xnew)
+}
+
+
+plotPhasePortrait <- function(y1, lag){
+  y2 <- shift(y1,lag= lag)
+  dfplot <- data.frame(y1, y2)
+  #plotting each data point versus its predecessor
+  ggplot(dfplot, aes(y1, y2)) +  geom_path() + ggtitle(paste("lag = ", lag)) +                ggplot2::theme_minimal()
+}
+
+
+dt <- df$X.Time.[2]-df$X.Time.[1] # time resolution in seconds
+fs <- 1/dt # sampling frequency in Hz
+
+#increasing sampling rate to 200 Hz
+df.resampled <- resampleTremsenData(df.detrended,200)
+
+y1 <- df.resampled$X.G2.Y. # Selection of time-series for analysis
+
+h1 <- plotPhasePortrait(y1, lag=1)
+h2 <- plotPhasePortrait(y1, lag=5)
+h3 <- plotPhasePortrait(y1, lag=10)
+h4 <- plotPhasePortrait(y1, lag=15)
+h5 <- plotPhasePortrait(y1, lag=20)
+h6 <- plotPhasePortrait(y1, lag=25)
+
+ggarrange(plotlist = list(h1, h2, h3, h4, h5, h6), ncol = 2, nrow= 3)
+
+# h <- seewave::hilbert(y1, f = fs, fftw = TRUE)
+# 
+# plot(y1,y2, type='l')
+# qplot(x = y1, y = y2, geom=c("line"))
+# 
+# dfplot <- data.frame(y1 = Real(h), y2 = Imag(h))
+# 
+# ggplot(data = dfplot,aes(x=y1,y=y2)) + ggplot2::geom_line()
+
+
+```
+
